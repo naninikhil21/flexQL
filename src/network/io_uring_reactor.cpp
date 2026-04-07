@@ -1,5 +1,8 @@
 // Legacy reactor path retained for reference; SqlCompatServer is the active server path.
 #include "network/io_uring_reactor.h"
+
+#ifdef HAVE_LIBURING
+
 #include "utils/thread_affinity.h"
 #include <stdexcept>
 #include <iostream>
@@ -160,3 +163,5 @@ void IOUringReactor::run() {
         io_uring_submit(&_ring);
     }
 }
+
+#endif // HAVE_LIBURING

@@ -1,6 +1,8 @@
 #ifndef IO_URING_REACTOR_H
 #define IO_URING_REACTOR_H
 
+#ifdef HAVE_LIBURING
+
 #include "utils/mpsc_ring_buffer.h"
 #include "parsing/simd_parser.h"
 #include <liburing.h>
@@ -48,5 +50,7 @@ private:
     std::vector<Request> _requests;
     std::array<std::array<char, BUFFER_SIZE>, MAX_CONNECTIONS> _buffers{};
 };
+
+#endif // HAVE_LIBURING
 
 #endif // IO_URING_REACTOR_H

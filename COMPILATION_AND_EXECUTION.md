@@ -6,8 +6,11 @@
 |------------------|------------------|--------------------------------------------------|
 | GCC / Clang      | C++17 or later   | `sudo apt install build-essential`               |
 | CMake            | ≥ 3.16           | `sudo apt install cmake`                         |
-| liburing         | ≥ 0.7            | `sudo apt install liburing-dev`                  |
+| liburing         | ≥ 0.7 *(optional)* | `sudo apt install liburing-dev`                  |
 | Python 3         | ≥ 3.8            | `sudo apt install python3` *(validation only)*   |
+
+> **Note:** `liburing` is optional. The active SQL server uses standard blocking sockets and builds
+> without it. If installed, it enables the legacy high-throughput io_uring reactor path.
 
 ---
 

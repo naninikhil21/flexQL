@@ -20,15 +20,20 @@ target_compile_options(flexql_server PRIVATE
 # Set include directory
 target_include_directories(flexql_server PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/src)
 
-# Find and link liburing for io_uring support
-find_package(PkgConfig REQUIRED)
-pkg_check_modules(LIBURING REQUIRED liburing)
+# Find liburing for io_uring support (optional — only used in legacy reactor path)
+find_package(PkgConfig QUIET)
+if (PkgConfig_FOUND)
+    pkg_check_modules(LIBURING liburing)
+endif()
+
 if (LIBURING_FOUND)
     target_include_directories(flexql_server PRIVATE ${LIBURING_INCLUDE_DIRS})
     target_link_libraries(flexql_server PRIVATE ${LIBURING_LIBRARIES})
+    target_compile_definitions(flexql_server PRIVATE HAVE_LIBURING)
     message(STATUS "Found and linked liburing")
 else()
-    message(FATAL_ERROR "liburing not found. Please install it (e.g., sudo apt-get install liburing-dev).")
+    message(STATUS "liburing not found — building without io_uring support (active SQL path unaffected)")
+    message(STATUS "  To enable: sudo apt install liburing-dev")
 endif()
 
 # Link against pthread
