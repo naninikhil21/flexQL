@@ -13,7 +13,8 @@
 
 ## 1. Building the Project
 
-All binaries are built in Release mode using CMake.
+All binaries are built in Release mode using CMake. The `build/` directory is generated
+locally and is not committed to version control — run these commands once after cloning.
 
 ```bash
 # From the project root directory:
@@ -30,11 +31,11 @@ chmod +x compile.sh
 
 After a successful build, the following binaries are available:
 
-| Binary                  | Description                                |
-|-------------------------|--------------------------------------------|
-| `./build/flexql_server` | The FlexQL database server (port 9000)     |
-| `./build/flexql_client` | Interactive REPL client                    |
-| `./benchmark`           | Insertion benchmark + unit test suite      |
+| Binary                   | Description                                |
+|--------------------------|--------------------------------------------|
+| `build/flexql_server`    | The FlexQL database server (port 9000)     |
+| `build/flexql_client`    | Interactive REPL client                    |
+| `build/benchmark`        | Insertion benchmark + unit test suite      |
 
 ---
 
@@ -134,17 +135,17 @@ The benchmark inserts 1,000,000 rows into a `BIG_USERS` table and also runs 23 u
 
 ```bash
 # Terminal 1 — start server
-./build/flexql_server
+build/flexql_server
 
 # Terminal 2 — run benchmark
-./benchmark 1000000
+build/benchmark 1000000
 ```
 
 You can pass any row count as the argument:
 
 ```bash
-./benchmark 500000    # 500K rows
-./benchmark 2000000   # 2M rows
+build/benchmark 500000    # 500K rows
+build/benchmark 2000000   # 2M rows
 ```
 
 ---

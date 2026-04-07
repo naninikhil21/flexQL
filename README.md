@@ -7,14 +7,18 @@ A high-performance, custom SQL database engine built from scratch in C++17 — n
 ## Quick Start
 
 ```bash
-# Build
+# Clone
+git clone <your-repo-url>
+cd <repo-folder>
+
+# Build (generates the build/ directory locally)
 cmake -S . -B build -DCMAKE_BUILD_TYPE=Release && cmake --build build --parallel
 
 # Start the server
-./build/flexql_server
+build/flexql_server
 
 # Connect via REPL (in a new terminal)
-./build/flexql_client 127.0.0.1 9000
+build/flexql_client 127.0.0.1 9000
 ```
 
 Once connected:
