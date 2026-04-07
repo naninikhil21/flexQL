@@ -22,8 +22,10 @@ Server::Server(int port, int num_workers)
         queue_ptrs.push_back(_queues.back().get());
     }
 
+#ifdef HAVE_LIBURING
     // One reactor dispatches incoming rows across all partition-owner queues.
     _reactors.push_back(std::make_unique<IOUringReactor>(port, queue_ptrs));
+#endif
 }
 
 void Server::run() {
@@ -33,6 +35,7 @@ void Server::run() {
         worker->start();
     }
 
+#ifdef HAVE_LIBURING
     for (auto& reactor : _reactors) {
         reactor->start();
     }
@@ -50,6 +53,14 @@ void Server::run() {
         bool ok = _workers[i]->set_affinity(core);
         std::cout << "worker[" << i << "] core=" << core << " affinity=" << (ok ? "ok" : "fail") << std::endl;
     }
+#else
+    const int hw = safe_hw_threads();
+    for (size_t i = 0; i < _workers.size(); ++i) {
+        int core = static_cast<int>(i % static_cast<size_t>(hw));
+        bool ok = _workers[i]->set_affinity(core);
+        std::cout << "worker[" << i << "] core=" << core << " affinity=" << (ok ? "ok" : "fail") << std::endl;
+    }
+#endif
 
     uint64_t prev_rows_total = 0;
     uint64_t prev_rx_total = 0;
@@ -65,11 +76,13 @@ void Server::run() {
         uint64_t rx_total = 0;
         uint64_t accept_total = 0;
         uint64_t stalls_total = 0;
+#ifdef HAVE_LIBURING
         for (const auto& reactor : _reactors) {
             rx_total += reactor->rows_received();
             accept_total += reactor->accepted_connections();
             stalls_total += reactor->parse_stalls();
         }
+#endif
 
         uint64_t rows_delta = rows_total - prev_rows_total;
         uint64_t rx_delta = rx_total - prev_rx_total;

@@ -17,7 +17,9 @@ private:
     int _num_workers;
     WriteAheadLog _wal;
     std::vector<std::unique_ptr<MPSCRingBuffer<ParsedRow>>> _queues;
+#ifdef HAVE_LIBURING
     std::vector<std::unique_ptr<IOUringReactor>> _reactors;
+#endif
     std::vector<std::unique_ptr<Worker>> _workers;
 };
 
