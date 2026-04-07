@@ -1,4 +1,0 @@
-/home/joyboy/Desktop/project_antiG/build/CMakeFiles/flexql_server.dir
-/home/joyboy/Desktop/project_antiG/build/CMakeFiles/flexql_client.dir
-/home/joyboy/Desktop/project_antiG/build/CMakeFiles/edit_cache.dir
-/home/joyboy/Desktop/project_antiG/build/CMakeFiles/rebuild_cache.dir
