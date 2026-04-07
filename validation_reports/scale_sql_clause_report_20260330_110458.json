@@ -1,0 +1,21 @@
+{
+  "timestamp": "20260330_110458",
+  "rows_target": 40000,
+  "benchmark": {
+    "elapsed_ms": 68,
+    "throughput_rows_per_sec": 588235
+  },
+  "tests": [
+    {
+      "label": "COUNT(*)",
+      "query": "SELECT COUNT(*) AS CNT FROM BIG_USERS;",
+      "expected": "CNT = 40000",
+      "ok": false,
+      "error": "ERROR: expected FROM",
+      "row_count": 0,
+      "rows": []
+    }
+  ],
+  "status": "fail",
+  "error": "COUNT(*) failed: ERROR: expected FROM"
+}

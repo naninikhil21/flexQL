@@ -1,0 +1,8 @@
+{
+  "timestamp": "20260407_164734",
+  "rows_target": 100000,
+  "benchmark": {},
+  "tests": [],
+  "status": "fail",
+  "error": "command failed: ./benchmark 100000\nSTDOUT:\nCannot open FlexQL\n\nSTDERR:\n"
+}

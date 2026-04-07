@@ -1,0 +1,206 @@
+FlexQL Architecture and Design Document
+
+This document describes the as-built architecture of the FlexQL database engine,
+including its storage model, query execution pipeline, write-ahead log, indexing,
+caching, network protocol, and concurrency design.
+
+1. System Architecture and Concurrency Model
+
+FlexQL is a custom from-scratch SQL database engine. No third-party database
+(SQLite, etc.) is used; all storage, indexing, parsing, and execution are
+implemented in C++17 under src/.
+
+The server uses a thread-per-client concurrency model:
+
+  1. A main thread owns the listening socket and accepts connections.
+  2. Each accepted connection spawns a dedicated worker thread.
+  3. Worker threads parse SQL, execute queries via the Executor, and send
+     results back over the socket.
+  4. A background WAL writer thread flushes pending log records to disk.
+
+Thread safety is achieved through:
+  - Per-table row mutexes (_row_mu) in RowStore for concurrent inserts.
+  - A global catalog mutex for schema operations (CREATE/DROP TABLE).
+  - A WAL mutex + condition variable for the producer-consumer log queue.
+
+2. Storage Model
+
+2.1 RowStore (In-Memory Row Storage)
+
+Tables are stored as contiguous fixed-size row buffers in RowStore:
+  - Each row is a flat byte array with fields at compile-time-computed offsets.
+  - Supported column types: DECIMAL (int64_t, 8 bytes), INT (int64_t, 8 bytes),
+    VARCHAR(N) (N+1 bytes, null-terminated), FLOAT/REAL (double, 8 bytes),
+    DATETIME (int64_t epoch, 8 bytes), TEXT (alias for VARCHAR(255)).
+  - Row size is the sum of all column sizes, computed at CREATE TABLE time.
+  - Rows are appended sequentially; no in-place deletion (append-only model).
+
+2.2 Schema and Catalog
+
+The Catalog maintains a map of table names to (Schema, RowStore) pairs:
+  - Schema stores column descriptors (name, type, offset, size, varchar_len),
+    total row_size, Primary Key column index (pk_col_index), and table_name.
+  - pk_col_index defaults to -1 (no explicit PK); when set, a HashIndex is
+    created for O(1) duplicate detection during inserts.
+
+3. Write-Ahead Log (WAL) and Persistence
+
+3.1 Record Format
+
+The WAL uses a binary record format with four magic numbers:
+  - kMagicCreate (0xF1E4D801): CREATE TABLE record.
+  - kMagicInsert (0xF1E4D802): INSERT batch record.
+  - kMagicDrop   (0xF1E4D803): DROP TABLE record.
+  - kMagicCheckpoint (0xF1E4D8FF): Checkpoint marker.
+
+CREATE TABLE Record (v4 format):
+  [4B magic] [4B payload_length] [4B table_name_len] [table_name bytes]
+  [4B col_count] { [4B col_name_len] [col_name] [1B type_tag] [4B varchar_len] }*
+  [4B pk_col_index (0xFFFFFFFF = no PK)]
+
+The payload_length field (added in v4) enables forward-compatible parsing:
+readers that encounter unknown trailing fields can skip them safely. Legacy
+v3 WAL files (without payload_length) are auto-detected via a heuristic and
+replayed correctly. The first checkpoint after startup rewrites the WAL in
+v4 format.
+
+INSERT Batch Record:
+  [4B magic] [4B table_name_len] [table_name] [8B row_count] [8B row_size]
+  [raw row data: row_count * row_size bytes]
+
+3.2 Background Writer
+
+WAL records are produced by the executor and queued in a lock-free deque.
+A dedicated background thread drains the queue and writes records to disk
+using writev() for scatter-gather I/O, minimizing syscalls.
+
+3.3 Checkpoint
+
+checkpoint_from_catalog() rewrites the entire WAL from the current in-memory
+catalog state, truncating the file and writing fresh CREATE + INSERT records
+for every table. This is triggered on startup (after replay) and on shutdown.
+
+3.4 Replay
+
+On startup, replay() reads the WAL file sequentially, reconstructing tables
+and inserting rows. Duplicate primary key checks are enforced during replay
+via append_rows_checked to prevent data corruption.
+
+4. Primary Key Indexing
+
+4.1 HashIndex
+
+Tables with PRIMARY KEY use a Robin Hood open-addressing hash index:
+  - 64-bit keys are hashed via a fast multiplicative hash.
+  - Collisions are resolved with Robin Hood probing (distance-from-bucket
+    tracking), which keeps variance low under high load factors.
+  - The table automatically resizes (doubles capacity and rehashes) when
+    load factor exceeds 90%.
+  - find() starts the distance-from-bucket counter at 1 to align with the
+    insert logic.
+
+4.2 PK Column Support
+
+PRIMARY KEY can be declared on any column position, not just the first.
+The pk_col_index is:
+  - Stored in Schema and used by the executor for duplicate checks.
+  - Serialized in the WAL CREATE record for persistence across restarts.
+  - Used by eval_where for accelerated single-row lookups when a WHERE
+    clause matches the PK column with EQ.
+
+5. SQL Parsing and Execution
+
+5.1 Lexer (sql_lexer.h)
+
+A hand-written single-pass lexer that tokenizes SQL into:
+  Token types: KEYWORD, IDENTIFIER, INTEGER_LITERAL, STRING_LITERAL,
+  LPAREN, RPAREN, COMMA, SEMICOLON, DOT, STAR, EQ, LT, GT, LE, GE,
+  END_OF_INPUT, UNKNOWN.
+
+Keywords recognized: CREATE, TABLE, DROP, IF, EXISTS, INSERT, INTO, VALUES,
+SELECT, FROM, WHERE, INNER, JOIN, ON, AND, OR, NOT, NULL, PRIMARY, KEY,
+DECIMAL, VARCHAR, TEXT, INT, DATETIME, FLOAT, REAL, COUNT, AS.
+
+5.2 Parser (sql_parser.h / sql_parser.cpp)
+
+A recursive descent parser that produces AST variants:
+  - CreateTableStmt, DropTableStmt, InsertStmt, SelectStmt.
+
+Supported SELECT features:
+  - SELECT *, SELECT col1, col2, SELECT col AS alias
+  - SELECT COUNT(*) AS alias
+  - FROM table [AS alias]
+  - INNER JOIN table [AS alias] ON lhs = rhs
+  - WHERE with =, <, >, <=, >= and AND/OR chains
+
+The parser enforces end-of-input after parsing: any trailing unsupported
+tokens (ORDER BY, GROUP BY, LIMIT, etc.) cause a clear error message.
+
+5.3 Executor (executor.cpp)
+
+The executor handles:
+  - CREATE TABLE: builds Schema, computes offsets, creates RowStore + HashIndex.
+  - DROP TABLE: removes from catalog, logs to WAL.
+  - INSERT: encodes values into row buffers, checks PK uniqueness, appends.
+  - SELECT: scans rows, evaluates WHERE predicates (with table alias validation),
+    handles COUNT(*), JOINs (nested loop with alias-aware column resolution),
+    and column projection with AS aliases.
+
+eval_where validates that the column's table_alias (if present) matches the
+schema's table_name before looking up the column, preventing incorrect
+matches in multi-table scenarios.
+
+6. Query Cache
+
+An LRU query cache with per-table invalidation:
+  - Cache size is configurable via the FLEXQL_CACHE_SIZE environment variable.
+  - Cache entries are keyed by normalized SQL text (lowercased).
+  - INSERT/CREATE/DROP operations invalidate all cache entries for the
+    affected table.
+  - Cache bypass: queries containing COUNT are not cached (aggregation
+    results may change on every insert).
+
+7. Network Protocol
+
+The server runs a SQL-compatible TCP protocol:
+  - Listens on a configurable port (default 9000).
+  - Each response is a sequence of pipe-delimited column=value lines,
+    terminated by an "END\n" or "ERROR: ...\nEND\n" frame.
+  - Semicolons delimit statements within a connection.
+
+8. Client Library and REPL
+
+8.1 C API (flexql.h)
+
+Four exported functions:
+  - flexql_open(host, port, &db): connects to server.
+  - flexql_exec(db, sql, callback, arg, &errmsg): sends query, invokes
+    callback for each result row.
+  - flexql_close(db): disconnects.
+  - flexql_free(ptr): frees error strings.
+
+8.2 Interactive REPL (flexql_client)
+
+A multi-line REPL client that:
+  - Accumulates input lines until a semicolon is found.
+  - Shows "flexql> " and "   ...> " prompts for continuation.
+  - Supports .exit, quit, exit, \q to disconnect.
+
+9. Expiration Support
+
+Tables with an expires_at column (DECIMAL/INT/DATETIME type) support
+automatic row expiration:
+  - Rows where expires_at < current_epoch_seconds are skipped during scans.
+  - No background sweeper thread runs; expiration is evaluated lazily at
+    query time.
+
+10. Validation and Testing
+
+The project includes:
+  - benchmark_flexql.cpp: insertion benchmark + 23-case unit test suite.
+  - scale_sql_clause_validation.py: 23-test Python validation script
+    covering all supported and unsupported SQL clauses at scale (20K rows).
+  - Validation reports saved as JSON under validation_reports/.
+
+Latest results: 23/23 tests pass, ~1.67M rows/sec insert throughput at
+20K rows, ~4.2M rows/sec at 1M rows.

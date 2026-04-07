@@ -1,0 +1,320 @@
+{
+  "timestamp": "20260330_095316",
+  "rows_target": 10000000,
+  "benchmark": {
+    "elapsed_ms": 6850,
+    "throughput_rows_per_sec": 1459854
+  },
+  "tests": [
+    {
+      "label": "COUNT(*)",
+      "query": "SELECT COUNT(*) AS CNT FROM BIG_USERS;",
+      "expected": "CNT = 10000000",
+      "ok": true,
+      "error": "",
+      "row_count": 1,
+      "rows": [
+        {
+          "CNT": "10000000"
+        }
+      ],
+      "passed": true
+    },
+    {
+      "label": "WHERE + LIMIT",
+      "query": "SELECT ID, NAME FROM BIG_USERS WHERE ID BETWEEN 100 AND 200 ORDER BY ID LIMIT 5;",
+      "expected": "5 rows with IDs 100..104",
+      "ok": true,
+      "error": "",
+      "row_count": 5,
+      "rows": [
+        {
+          "ID": "100",
+          "NAME": "user100"
+        },
+        {
+          "ID": "101",
+          "NAME": "user101"
+        },
+        {
+          "ID": "102",
+          "NAME": "user102"
+        },
+        {
+          "ID": "103",
+          "NAME": "user103"
+        },
+        {
+          "ID": "104",
+          "NAME": "user104"
+        }
+      ],
+      "passed": true
+    },
+    {
+      "label": "ORDER BY DESC",
+      "query": "SELECT ID FROM BIG_USERS ORDER BY ID DESC LIMIT 3;",
+      "expected": "IDs [10000000, 9999999, 9999998]",
+      "ok": true,
+      "error": "",
+      "row_count": 3,
+      "rows": [
+        {
+          "ID": "10000000"
+        },
+        {
+          "ID": "9999999"
+        },
+        {
+          "ID": "9999998"
+        }
+      ],
+      "passed": true
+    },
+    {
+      "label": "GROUP BY",
+      "query": "SELECT EXPIRES_AT, COUNT(*) AS C FROM BIG_USERS GROUP BY EXPIRES_AT;",
+      "expected": "single group EXPIRES_AT=1893456000 with C=10000000",
+      "ok": true,
+      "error": "",
+      "row_count": 1,
+      "rows": [
+        {
+          "EXPIRES_AT": "1893456000",
+          "C": "10000000"
+        }
+      ],
+      "passed": true
+    },
+    {
+      "label": "HAVING",
+      "query": "SELECT EXPIRES_AT, COUNT(*) AS C FROM BIG_USERS GROUP BY EXPIRES_AT HAVING COUNT(*) > 0;",
+      "expected": "same as GROUP BY result",
+      "ok": true,
+      "error": "",
+      "row_count": 1,
+      "rows": [
+        {
+          "EXPIRES_AT": "1893456000",
+          "C": "10000000"
+        }
+      ],
+      "passed": true
+    },
+    {
+      "label": "Aggregate MIN/MAX/COUNT",
+      "query": "SELECT MIN(ID) AS MIN_ID, MAX(ID) AS MAX_ID, COUNT(*) AS CNT FROM BIG_USERS;",
+      "expected": "MIN_ID=1, MAX_ID=10000000, CNT=10000000",
+      "ok": true,
+      "error": "",
+      "row_count": 1,
+      "rows": [
+        {
+          "MIN_ID": "1",
+          "MAX_ID": "10000000",
+          "CNT": "10000000"
+        }
+      ],
+      "passed": true
+    },
+    {
+      "label": "DISTINCT",
+      "query": "SELECT COUNT(DISTINCT BALANCE) AS D FROM BIG_USERS;",
+      "expected": "D=10000",
+      "ok": true,
+      "error": "",
+      "row_count": 1,
+      "rows": [
+        {
+          "D": "10000"
+        }
+      ],
+      "passed": true
+    },
+    {
+      "label": "LIKE",
+      "query": "SELECT COUNT(*) AS C FROM BIG_USERS WHERE EMAIL LIKE 'user1%@mail.com';",
+      "expected": "C=1111112",
+      "ok": true,
+      "error": "",
+      "row_count": 1,
+      "rows": [
+        {
+          "C": "1111112"
+        }
+      ],
+      "passed": true
+    },
+    {
+      "label": "IN",
+      "query": "SELECT ID, NAME FROM BIG_USERS WHERE ID IN (1,2,10000) ORDER BY ID;",
+      "expected": "IDs=[1, 2, 10000]",
+      "ok": true,
+      "error": "",
+      "row_count": 3,
+      "rows": [
+        {
+          "ID": "1",
+          "NAME": "user1"
+        },
+        {
+          "ID": "2",
+          "NAME": "user2"
+        },
+        {
+          "ID": "10000",
+          "NAME": "user10000"
+        }
+      ],
+      "passed": true
+    },
+    {
+      "label": "BETWEEN",
+      "query": "SELECT COUNT(*) AS C FROM BIG_USERS WHERE ID BETWEEN 5000 AND 15000;",
+      "expected": "C=10001",
+      "ok": true,
+      "error": "",
+      "row_count": 1,
+      "rows": [
+        {
+          "C": "10001"
+        }
+      ],
+      "passed": true
+    },
+    {
+      "label": "LIMIT + OFFSET",
+      "query": "SELECT ID FROM BIG_USERS ORDER BY ID LIMIT 3 OFFSET 5;",
+      "expected": "IDs=[6, 7, 8]",
+      "ok": true,
+      "error": "",
+      "row_count": 3,
+      "rows": [
+        {
+          "ID": "6"
+        },
+        {
+          "ID": "7"
+        },
+        {
+          "ID": "8"
+        }
+      ],
+      "passed": true
+    },
+    {
+      "label": "Subquery",
+      "query": "SELECT COUNT(*) AS C FROM BIG_USERS WHERE ID IN (SELECT ID FROM BIG_USERS WHERE ID <= 500);",
+      "expected": "C=500",
+      "ok": true,
+      "error": "",
+      "row_count": 1,
+      "rows": [
+        {
+          "C": "500"
+        }
+      ],
+      "passed": true
+    },
+    {
+      "label": "Expression filter",
+      "query": "SELECT COUNT(*) AS C FROM BIG_USERS WHERE BALANCE = 1000.0;",
+      "expected": "C=1000",
+      "ok": true,
+      "error": "",
+      "row_count": 1,
+      "rows": [
+        {
+          "C": "1000"
+        }
+      ],
+      "passed": true
+    },
+    {
+      "label": "IS NOT NULL",
+      "query": "SELECT COUNT(*) AS C FROM BIG_USERS WHERE NAME IS NOT NULL AND EMAIL IS NOT NULL;",
+      "expected": "C=10000000",
+      "ok": true,
+      "error": "",
+      "row_count": 1,
+      "rows": [
+        {
+          "C": "10000000"
+        }
+      ],
+      "passed": true
+    },
+    {
+      "label": "CASE",
+      "query": "SELECT SUM(CASE WHEN BALANCE >= 1000.0 THEN 1 ELSE 0 END) AS GE_1000, SUM(CASE WHEN BALANCE < 1000.0 THEN 1 ELSE 0 END) AS LT_1000 FROM BIG_USERS;",
+      "expected": "GE_1000=10000000, LT_1000=0",
+      "ok": true,
+      "error": "",
+      "row_count": 1,
+      "rows": [
+        {
+          "GE_1000": "10000000",
+          "LT_1000": "0"
+        }
+      ],
+      "passed": true
+    },
+    {
+      "label": "CREATE TABLE",
+      "query": "CREATE TABLE IF NOT EXISTS CLAUSE_TMP(ID DECIMAL, V DECIMAL);",
+      "expected": "OK",
+      "ok": true,
+      "error": "",
+      "row_count": 0,
+      "rows": [],
+      "passed": true
+    },
+    {
+      "label": "INSERT (non-BIG_USERS path)",
+      "query": "INSERT INTO CLAUSE_TMP VALUES (1, 10), (2, 20), (3, 30);",
+      "expected": "OK",
+      "ok": true,
+      "error": "",
+      "row_count": 0,
+      "rows": [],
+      "passed": true
+    },
+    {
+      "label": "JOIN",
+      "query": "SELECT C.ID, C.V, B.NAME FROM CLAUSE_TMP C INNER JOIN BIG_USERS B ON B.ID = C.ID ORDER BY C.ID;",
+      "expected": "3 rows joined on IDs 1,2,3",
+      "ok": true,
+      "error": "",
+      "row_count": 3,
+      "rows": [
+        {
+          "ID": "1",
+          "V": "10",
+          "NAME": "user1"
+        },
+        {
+          "ID": "2",
+          "V": "20",
+          "NAME": "user2"
+        },
+        {
+          "ID": "3",
+          "V": "30",
+          "NAME": "user3"
+        }
+      ],
+      "passed": true
+    },
+    {
+      "label": "DROP TABLE",
+      "query": "DROP TABLE IF EXISTS CLAUSE_TMP;",
+      "expected": "OK",
+      "ok": true,
+      "error": "",
+      "row_count": 0,
+      "rows": [],
+      "passed": true
+    }
+  ],
+  "status": "pass"
+}

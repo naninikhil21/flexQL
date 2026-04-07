@@ -1,0 +1,1 @@
+/usr/bin/c++ -O3 -DNDEBUG -march=native -flto=auto -fomit-frame-pointer -funroll-loops -fno-plt -ffast-math CMakeFiles/flexql_client.dir/flexql_client.cpp.o CMakeFiles/flexql_client.dir/flexql.cpp.o -o flexql_client 

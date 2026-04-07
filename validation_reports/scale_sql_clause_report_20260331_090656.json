@@ -1,0 +1,8 @@
+{
+  "timestamp": "20260331_090656",
+  "rows_target": 20000,
+  "benchmark": {},
+  "tests": [],
+  "status": "fail",
+  "error": "Server did not become ready on port 9000"
+}
