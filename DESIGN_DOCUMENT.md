@@ -1,8 +1,8 @@
 # FlexQL — Design Document
 
 ## GitHub Repository
-[Add your GitHub repository link here before submitting to Moodle]
-
+[https://github.com/naninikhil21/flexQL/tree/submission_branch
+](https://github.com/naninikhil21/flexQL/tree/submission_branch)
 ---
 
 ## 1. How the Data Is Stored

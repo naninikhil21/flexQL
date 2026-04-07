@@ -1,8 +1,0 @@
-{
-  "timestamp": "20260331_090525",
-  "rows_target": 20000,
-  "benchmark": {},
-  "tests": [],
-  "status": "fail",
-  "error": "command failed: ./benchmark 20000\nSTDOUT:\nConnected to FlexQL\nRunning SQL subset checks plus insertion benchmark...\nTarget insert rows: 20000\n\n[FAIL] DROP TABLE IF EXISTS BIG_USERS -> read failed\n\nSTDERR:\n"
-}
